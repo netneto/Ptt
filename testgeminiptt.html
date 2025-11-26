@@ -48,6 +48,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 0.5rem;
         }
 
         h1 {
@@ -56,7 +57,13 @@
             color: var(--disp-text-light);
             margin: 0;
             flex-shrink: 0;
-            padding-right: 0.5rem;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-shrink: 0;
         }
 
         .select-wrapper {
@@ -195,15 +202,16 @@
             background-color: var(--disp-hover-bg);
         }
 
-        /* 縮圖區 */
+        /* 縮圖區 (高度隨卡片寬度調整) */
         .card-img-wrapper {
             width: 100%;
-            height: 100px; /* 縮小 */
+            height: var(--card-img-height, 100px);
             background-color: var(--disp-bg-light);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            transition: height 0.2s ease;
         }
         .card-img-wrapper img {
             width: 100%;
@@ -474,15 +482,6 @@
         .keyboard-toggle .kbd-icon {
             font-size: 0.9rem;
         }
-        .keyboard-toggle .kbd-label {
-            font-size: 0.7rem;
-            display: none;
-        }
-        @media (min-width: 600px) {
-            .keyboard-toggle .kbd-label {
-                display: inline;
-            }
-        }
 
         /* 鍵盤選中的卡片 */
         .card-link.keyboard-selected {
@@ -542,10 +541,6 @@
         <!-- 極簡 Header -->
         <header>
             <h1>PTT 瀏覽器</h1>
-            <button id="keyboard-toggle" class="keyboard-toggle" title="鍵盤模式 (按 K 切換)">
-                <span class="kbd-icon">⌨</span>
-                <span class="kbd-label">鍵盤</span>
-            </button>
             <div class="select-wrapper">
                 <select id="boardSelect">
                     <option value="">-- 選擇版面 (40+) --</option>
@@ -600,6 +595,14 @@
                     </optgroup>
                 </select>
             </div>
+            <!-- 控制按鈕群組 -->
+            <div class="header-controls">
+                <button id="keyboard-toggle" class="keyboard-toggle" title="鍵盤模式 (按 K 切換)">
+                    <span class="kbd-icon">⌨</span>
+                </button>
+                <button id="grid-larger-btn" class="zoom-btn control-btn" title="放大 (欄數減少)">-</button>
+                <button id="grid-smaller-btn" class="zoom-btn control-btn" title="縮小 (欄數增加)">+</button>
+            </div>
         </header>
 
         <!-- 控制列 -->
@@ -610,15 +613,11 @@
                 <span>載入中...</span>
             </div>
             
-            <!-- 排序 & 縮放 (右) -->
+            <!-- 排序 (右) -->
             <div class="controls-group">
                 <span class="controls-label">排序:</span>
                 <button id="sort-time-btn" class="sort-btn control-btn active">最新</button>
                 <button id="sort-push-btn" class="sort-btn control-btn">熱門</button>
-                
-                <span class="controls-label">排列:</span>
-                <button id="grid-larger-btn" class="zoom-btn control-btn" title="放大 (欄數減少)">-</button>
-                <button id="grid-smaller-btn" class="zoom-btn control-btn" title="縮小 (欄數增加)">+</button>
             </div>
         </div>
        
@@ -1032,7 +1031,10 @@
         /** 更新網格排版 */
         function updateGalleryGrid() {
             gallery.style.gridTemplateColumns = `repeat(auto-fill, minmax(${currentMinCardWidth}px, 1fr))`;
-            console.log(`網格最小寬度設為: ${currentMinCardWidth}px`);
+            // 高度按比例調整 (寬高比約 4:3)
+            const cardImgHeight = Math.round(currentMinCardWidth * 0.75);
+            document.documentElement.style.setProperty('--card-img-height', `${cardImgHeight}px`);
+            console.log(`網格最小寬度設為: ${currentMinCardWidth}px, 圖片高度: ${cardImgHeight}px`);
         }
 
         /** 更新排序按鈕 UI */
@@ -1302,6 +1304,35 @@
         function handleKeyboardNavigation(e) {
             // 如果正在輸入 (select 有 focus)，忽略
             if (document.activeElement === boardSelect) return;
+
+            // 如果預覽視窗開啟，用方向鍵控制滾動
+            if (previewOverlay.classList.contains('active')) {
+                const scrollAmount = 100; // 每次滾動像素
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+                        return;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: -scrollAmount, behavior: 'smooth' });
+                        return;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: scrollAmount * 3, behavior: 'smooth' });
+                        return;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: -scrollAmount * 3, behavior: 'smooth' });
+                        return;
+                    case ' ': // 空白鍵關閉預覽
+                    case 'Escape':
+                        e.preventDefault();
+                        closePreview();
+                        return;
+                }
+                return; // 預覽開啟時，其他按鍵不處理
+            }
 
             // K 鍵切換鍵盤模式
             if (e.key === 'k' || e.key === 'K') {
