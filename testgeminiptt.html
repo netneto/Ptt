@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTT 熱門版面瀏覽器</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --disp-bg-dark: #222222;
+            --disp-bg-medium: #333333;
+            --disp-bg-light: #444444;
+            --disp-text-light: #E0E0E0;
+            --disp-text-medium: #CCCCCC;
+            --disp-text-dark: #999999;
+            --disp-accent-blue: #007bff;
+            --disp-border-color: #555555;
+            --disp-hover-bg: #555555;
+            --disp-shadow: rgba(0, 0, 0, 0.4);
+
+            --push-red: #F64;
+            --push-yellow: #FA0;
+            --push-green: #5A5;
+            --push-gray: #999;
+        }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+            background-color: var(--disp-bg-dark);
+            color: var(--disp-text-light);
+            margin: 0;
+            padding: 0;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1440px; /* 稍微加寬 */
+            margin: 0 auto;
+            padding: 0.5rem;
+        }
+
+        /* --- 極簡化 Header --- */
+        header {
+            background-color: transparent;
+            padding: 0.5rem 0.25rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--disp-border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1rem; /* 縮小 */
+            font-weight: 700;
+            color: var(--disp-text-light);
+            margin: 0;
+            flex-shrink: 0;
+            padding-right: 0.5rem;
+        }
+
+        .select-wrapper {
+            position: relative;
+            margin: 0;
+            max-width: 250px;
+            flex-grow: 1;
+        }
+        
+        select {
+            width: 100%;
+            padding: 0.3rem 0.5rem;
+            border: 1px solid var(--disp-border-color);
+            border-radius: 4px;
+            background-color: var(--disp-bg-light);
+            color: var(--disp-text-light);
+            font-size: 0.8rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--disp-text-dark);
+            pointer-events: none;
+            font-size: 0.7rem;
+        }
+        /* --- 結束 Header --- */
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            background-color: #4a1c1c;
+            border: 1px solid #7c2d2d;
+            color: #ffcccc;
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            font-size: 0.85rem;
+        }
+
+        /* --- 控制列 --- */
+        .controls-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .loading-inline {
+            display: none;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--disp-text-medium);
+            flex-grow: 1;
+        }
+        .loading-inline .loader {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--disp-bg-light);
+            border-top: 2px solid var(--disp-accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 0.5rem 0 0;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .controls-group {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .controls-label {
+            font-size: 0.8rem;
+            color: var(--disp-text-dark);
+            margin: 0 0.5rem 0 0.75rem;
+        }
+
+        .control-btn { /* 通用按鈕樣式 */
+            background-color: var(--disp-bg-light);
+            border: 1px solid var(--disp-border-color);
+            color: var(--disp-text-light);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.2s;
+        }
+        .control-btn:hover { background-color: var(--disp-hover-bg); }
+
+        .zoom-btn {
+            font-weight: bold;
+            margin-left: 0.25rem;
+        }
+        .sort-btn {
+            margin-left: 0.25rem;
+        }
+        .sort-btn.active {
+            background-color: var(--disp-accent-blue);
+            border-color: var(--disp-accent-blue);
+            color: white;
+            font-weight: bold;
+        }
+        /* --- 結束控制列 --- */
+
+        /* Gallery Grid */
+        .gallery {
+            display: grid;
+            gap: 0.6rem; /* 縮小 */
+            transition: gap 0.2s ease;
+        }
+
+        /* Article Card */
+        .card-link {
+            display: block;
+            background-color: var(--disp-bg-medium);
+            border-radius: 5px; /* 縮小 */
+            overflow: hidden;
+            box-shadow: 0 1px 3px var(--disp-shadow); /* 縮小 */
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s;
+            text-decoration: none;
+        }
+        .card-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px var(--disp-shadow);
+            background-color: var(--disp-hover-bg);
+        }
+
+        /* 縮圖區 */
+        .card-img-wrapper {
+            width: 100%;
+            height: 100px; /* 縮小 */
+            background-color: var(--disp-bg-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .card-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .card-link:hover .card-img-wrapper img {
+            transform: scale(1.05);
+        }
+
+        /* 文字縮圖 */
+        .text-preview {
+            width: 100%;
+            height: 100%;
+            padding: 0.5rem;
+            font-size: 0.7rem; /* 縮小 */
+            color: var(--disp-text-medium);
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 5; /* 配合 100px 高度 */
+            text-overflow: ellipsis;
+            word-break: break-all;
+        }
+        .text-preview.error {
+            color: #f88;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 卡片內容 (更緊密) */
+        .card-content {
+            padding: 0.5rem; /* 縮小 */
+        }
+
+        .card-title {
+            font-size: 0.8rem; /* 縮小 */
+            font-weight: 700;
+            color: var(--disp-text-light);
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            font-size: 0.7rem; /* 縮小 */
+            color: var(--disp-text-dark);
+            line-height: 1;
+        }
+
+        .card-push {
+            font-weight: bold;
+            text-align: center;
+            min-width: 2.2em;
+            margin-right: 0.3rem;
+            padding: 0.1rem 0;
+            border-radius: 3px;
+            color: var(--push-gray); /* 預設 */
+        }
+        .card-author {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 1;
+        }
+        .card-date {
+            margin-left: auto;
+            flex-shrink: 0;
+            padding-left: 0.25rem;
+        }
+
+        /* 無文章提示 */
+        .no-articles {
+            text-align: center;
+            color: var(--disp-text-medium);
+            grid-column: 1 / -1;
+            padding: 2rem 0;
+            font-size: 0.9rem;
+        }
+
+        /* --- 手機版響應式調整 --- */
+        @media (max-width: 480px) {
+            .container { padding: 0.25rem; }
+            h1 { font-size: 0.9rem; }
+            .select-wrapper { max-width: 160px; } /* 窄 */
+            .gallery { gap: 0.5rem; }
+            .card-content { padding: 0.4rem; }
+            .card-title { font-size: 0.75rem; }
+            .card-meta, .text-preview, .controls-label, .control-btn {
+                font-size: 0.7rem;
+            }
+            .controls-label { display: none; } /* 手機上隱藏標籤 */
+            .controls-wrapper { margin-bottom: 0.5rem; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 極簡 Header -->
+        <header>
+            <h1>PTT 瀏覽器</h1>
+            <div class="select-wrapper">
+                <select id="boardSelect">
+                    <option value="">-- 選擇版面 (40+) --</option>
+                    <optgroup label="熱門看板">
+                        <option value="/bbs/Gossiping/index.html">Gossiping (八卦)</option>
+                        <option value="/bbs/Stock/index.html">Stock (股票)</option>
+                        <option value="/bbs/C_Chat/index.html">C_Chat (希洽)</option>
+                        <option value="/bbs/Baseball/index.html">Baseball (棒球)</option>
+                        <option value="/bbs/NBA/index.html">NBA</option>
+                        <option value="/bbs/LifeIsMoney/index.html">LifeIsMoney (省錢)</option>
+                        <option value="/bbs/Tech_Job/index.html">Tech_Job (科技業)</option>
+                        <option value="/bbs/car/index.html">Car (汽車)</option>
+                        <option value="/bbs/MobileComm/index.html">MobileComm (手機)</option>
+                        <option value="/bbs/Boy-Girl/index.html">Boy-Girl (男女)</option>
+                    </optgroup>
+                    <optgroup label="生活 | 購物">
+                        <option value="/bbs/E-shopping/index.html">E-shopping (網購)</option>
+                        <option value="/bbs/WomenTalk/index.html">WomenTalk (女孩)</option>
+                        <option value="/bbs/BabyMother/index.html">BabyMother (媽寶)</option>
+                        <option value="/bbs/marriage/index.html">Marriage (婚姻)</option>
+                        <option value="/bbs/Food/index.html">Food (美食)</option>
+                        <option value="/bbs/cookclub/index.html">Cookclub (烹飪)</option>
+                        <option value="/bbs/Japan_Travel/index.html">Japan_Travel (日旅)</option>
+                        <option value="/bbs/Korea_Travel/index.html">Korea_Travel (韓旅)</option>
+                        <option value="/bbs/creditcard/index.html">CreditCard (信用卡)</option>
+                        <option value="/bbs/home-sale/index.html">Home-Sale (房產)</option>
+                    </optgroup>
+                    <optgroup label="科技 | 遊戲">
+                        <option value="/bbs/PC_Shopping/index.html">PC_Shopping (電蝦)</option>
+                        <option value="/bbs/Steam/index.html">Steam (PC 遊戲)</option>
+                        <option value="/bbs/PlayStation/index.html">PlayStation (PS)</option>
+                        <option value="/bbs/NSwitch/index.html">NSwitch (NS)</option>
+                        <option value="/bbs/PuzzleDragon/index.html">PuzzleDragon (龍族)</option>
+                        <option value="/bbs/LoL/index.html">LoL (英雄聯盟)</option>
+                        <option value="/bbs/DIABLO/index.html">DIABLO (暗黑)</option>
+                        <option value="/bbs/RO/index.html">RO (仙境傳說)</option>
+                        <option value="/bbs/WOW/index.html">WOW (魔獸世界)</option>
+                    </optgroup>
+                    <optgroup label="興趣 | 學習">
+                        <option value="/bbs/Programming/index.html">Programming (程式)</option>
+                        <option value="/bbs/Python/index.html">Python</option>
+                        <option value="/bbs/Soft_Job/index.html">Soft_Job (軟體)</option>
+                        <option value="/bbs/movie/index.html">Movie (電影)</option>
+                        <option value="/bbs/EAseries/index.html">EAseries (歐美影集)</option>
+                        <option value="/bbs/Japandrama/index.html">Japandrama (日劇)</option>
+                        <option value="/bbs/KoreaDrama/index.html">KoreaDrama (韓劇)</option>
+                        <option value="/bbs/Beauty/index.html">Beauty (美妝)</option>
+                        <option value="/bbs/MakeUp/index.html">MakeUp (彩妝)</option>
+                        <option value="/bbs/DigitalMusic/index.html">DigitalMusic (數位音樂)</option>
+                        <option value="/bbs/Headphone/index.html">Headphone (耳機)</option>
+                        <option value="/bbs/fit/index.html">FITNESS (健身)</option>
+                    </optgroup>
+                </select>
+            </div>
+        </header>
+
+        <!-- 控制列 -->
+        <div class="controls-wrapper">
+            <!-- 載入中 (左) -->
+            <div id="loading" class="loading-inline">
+                <div class="loader"></div>
+                <span>載入中...</span>
+            </div>
+            
+            <!-- 排序 & 縮放 (右) -->
+            <div class="controls-group">
+                <span class="controls-label">排序:</span>
+                <button id="sort-time-btn" class="sort-btn control-btn active">最新</button>
+                <button id="sort-push-btn" class="sort-btn control-btn">熱門</button>
+                
+                <span class="controls-label">排列:</span>
+                <button id="grid-larger-btn" class="zoom-btn control-btn" title="放大 (欄數減少)">-</button>
+                <button id="grid-smaller-btn" class="zoom-btn control-btn" title="縮小 (欄數增加)">+</button>
+            </div>
+        </div>
+       
+        <div id="error-message" class="error-message">
+            <!-- 錯誤訊息 -->
+        </div>
+
+        <div id="gallery" class="gallery">
+            <!-- 文章卡片 -->
+        </div>
+    </div>
+
+    <script>
+        // CORS Proxy
+        const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+        const PTT_BASE_URL = 'https://www.ptt.cc';
+        const TARGET_ARTICLE_COUNT = 100;
+
+        // DOM 元素
+        const boardSelect = document.getElementById('boardSelect');
+        const gallery = document.getElementById('gallery');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+
+        // 縮放控制
+        const gridSmallerBtn = document.getElementById('grid-smaller-btn');
+        const gridLargerBtn = document.getElementById('grid-larger-btn');
+        let currentMinCardWidth = 120; // 預設更小
+        const MIN_CARD_WIDTH = 100; 
+        const MAX_CARD_WIDTH = 240; 
+        const WIDTH_STEP = 20; 
+
+        // --- 新增：排序控制 ---
+        const sortTimeBtn = document.getElementById('sort-time-btn');
+        const sortPushBtn = document.getElementById('sort-push-btn');
+        let currentSortMode = 'time'; // 'time' or 'push'
+        let allFetchedArticles = []; // 儲存所有抓取的文章
+        // --- 結束：排序控制 ---
+
+        // --- 事件監聽 ---
+        boardSelect.addEventListener('change', handleBoardSelect);
+        gridSmallerBtn.addEventListener('click', () => {
+            currentMinCardWidth = Math.max(MIN_CARD_WIDTH, currentMinCardWidth - WIDTH_STEP);
+            updateGalleryGrid();
+        });
+        gridLargerBtn.addEventListener('click', () => {
+            currentMinCardWidth = Math.min(MAX_CARD_WIDTH, currentMinCardWidth + WIDTH_STEP);
+            updateGalleryGrid();
+        });
+        sortTimeBtn.addEventListener('click', () => {
+            if (currentSortMode === 'time') return; // 沒變
+            currentSortMode = 'time';
+            updateSortButtonUI();
+            displayArticles(); // 重新排序並渲染
+        });
+        sortPushBtn.addEventListener('click', () => {
+            if (currentSortMode === 'push') return; // 沒變
+            currentSortMode = 'push';
+            updateSortButtonUI();
+            displayArticles(); // 重新排序並渲染
+        });
+        // --- 結束：事件監聽 ---
+
+        /**
+         * 處理版面選擇事件
+         */
+        async function handleBoardSelect() {
+            const boardUrl = boardSelect.value;
+            if (!boardUrl) {
+                gallery.innerHTML = '';
+                errorMessage.style.display = 'none';
+                return;
+            }
+
+            // 重置 UI
+            loading.style.display = 'flex';
+            gallery.innerHTML = '';
+            errorMessage.style.display = 'none';
+            allFetchedArticles = []; // 清空快取
+            currentSortMode = 'time'; // 重設為最新
+            updateSortButtonUI();
+
+            try {
+                // 1. 抓取文章列表
+                console.log(`開始抓取版面: ${boardUrl}`);
+                allFetchedArticles = await fetchArticleList(boardUrl);
+                
+                // 2. 顯示文章
+                console.log(`抓取到 ${allFetchedArticles.length} 篇文章，開始渲染...`);
+                displayArticles(); // 使用新函式
+
+            } catch (error) {
+                console.error('抓取文章列表時發生錯誤:', error);
+                errorMessage.textContent = `無法載入文章。(${error.message})。部分看板(如八卦)可能因 18 歲認證而失敗。`;
+                errorMessage.style.display = 'block';
+            } finally {
+                // 隱藏載入中
+                loading.style.display = 'none';
+            }
+        }
+
+        /**
+         * 透過 Proxy 抓取網頁內容
+         */
+        async function fetchWithProxy(url) {
+            const proxyRequestUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
+            const response = await fetch(proxyRequestUrl);
+            if (!response.ok) {
+                let errorDetails = response.statusText;
+                try {
+                    const errorBody = await response.text();
+                    errorDetails = errorBody.substring(0, 200); 
+                } catch (e) { /* 忽略 */ }
+                console.error(`Proxy 請求失敗: 狀態 ${response.status}, 詳情: ${errorDetails}`);
+                throw new Error(`Proxy 請求失敗，狀態碼: ${response.status}`);
+            }
+            return await response.text();
+        }
+
+        /**
+         * 抓取指定版面的文章列表
+         */
+        async function fetchArticleList(boardIndexUrl) {
+            let articles = [];
+            let currentUrl = boardIndexUrl;
+            const parser = new DOMParser();
+            let pagesFetched = 0; 
+
+            while (articles.length < TARGET_ARTICLE_COUNT && currentUrl && pagesFetched < 7) { 
+                const fullUrl = `${PTT_BASE_URL}${currentUrl}`;
+                const html = await fetchWithProxy(fullUrl);
+                pagesFetched++;
+                const doc = parser.parseFromString(html, 'text/html');
+
+                if (doc.querySelector('div.over18-notice')) {
+                    console.error('偵測到 18 歲認證頁面，抓取失敗。');
+                    throw new Error('需 18 歲認證，Proxy 無法處理');
+                }
+
+                const pagingButtons = doc.querySelectorAll('a.btn.wide');
+                let prevPageUrl = null;
+                pagingButtons.forEach(btn => {
+                    if (btn.textContent.includes('‹ 上頁')) {
+                        prevPageUrl = btn.getAttribute('href'); 
+                    }
+                });
+
+                currentUrl = prevPageUrl; 
+                if (!currentUrl) {
+                    console.log('找不到 "‹ 上頁" 連結，停止翻頁。');
+                }
+
+                // 解析文章
+                const newArticles = Array.from(doc.querySelectorAll('div.r-ent')).reverse().map(el => {
+                    const titleEl = el.querySelector('div.title a');
+                    if (!titleEl) return null;
+
+                    const title = titleEl.textContent;
+                    if (title.includes('[公告]')) return null;
+
+                    const url = titleEl.getAttribute('href'); 
+                    const date = el.querySelector('div.meta div.date').textContent.trim();
+                    const author = el.querySelector('div.meta div.author').textContent.trim();
+
+                    // 抓取推文數
+                    const nrecEl = el.querySelector('div.nrec span');
+                    let pushCount = '0';
+                    if (nrecEl) {
+                        pushCount = nrecEl.textContent.trim();
+                        if(pushCount === '') pushCount = '0';
+                    }
+                    
+                    return { title, url, date, author, pushCount };
+                }).filter(Boolean); 
+
+                articles = articles.concat(newArticles);
+                console.log(`目前累積 ${articles.length} 篇文章 (已抓 ${pagesFetched} 頁)`);
+            }
+
+            return articles.slice(0, TARGET_ARTICLE_COUNT);
+        }
+
+        /**
+         * --- 新增：解析推文數為數字 ---
+         * '爆' -> 100
+         * '99' -> 99
+         * 'X1' -> -1
+         * 'XX' -> -100
+         * ' ' -> 0
+         */
+        function parsePushCount(pushStr) {
+            if (pushStr === '爆') return 100;
+            if (pushStr.startsWith('X')) {
+                const val = pushStr.substring(1);
+                if (val === 'X') return -100; // XX
+                const num = parseInt(val, 10);
+                return isNaN(num) ? -1 : num * -1; // X1, X2...
+            }
+            const num = parseInt(pushStr, 10);
+            return isNaN(num) ? 0 : num;
+        }
+
+        /**
+         * --- 新增：根據目前模式排序並顯示文章 ---
+         */
+        function displayArticles() {
+            let sortedArticles = [...allFetchedArticles]; // 複製
+
+            if (currentSortMode === 'push') {
+                // 如果是熱門排序
+                sortedArticles.sort((a, b) => {
+                    return parsePushCount(b.pushCount) - parsePushCount(a.pushCount);
+                });
+            }
+            // 'time' 模式 (最新) 不需額外排序，使用抓取時的順序
+            
+            renderGallery(sortedArticles);
+        }
+
+        /**
+         * 將文章列表渲染到圖庫中 (被 displayArticles 呼叫)
+         */
+        function renderGallery(articles) {
+            if (articles.length === 0) {
+                gallery.innerHTML = '<p class="no-articles">這個版面目前沒有文章。</p>';
+                return;
+            }
+
+            gallery.innerHTML = ''; 
+            articles.forEach(article => {
+                const articleId = `article-${article.url.replace(/[\/.]/g, '-')}`;
+                const thumbWrapperId = `thumb-${articleId}`;
+                const pushId = `push-${articleId}`;
+                
+                const cardHtml = `
+                    <a href="${PTT_BASE_URL}${article.url}" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       class="card-link">
+                        <div class="card-img-wrapper" id="${thumbWrapperId}">
+                            <img src="https://placehold.co/200x150/333333/999999?text=..." 
+                                 alt="封面">
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title" title="${escapeHTML(article.title)}">
+                                ${escapeHTML(article.title)}
+                            </h3>
+                            <div class="card-meta">
+                                <span class="card-push" id="${pushId}">?</span>
+                                <span class="card-author" title="${escapeHTML(article.author)}">${escapeHTML(article.author)}</span>
+                                <span class="card-date">${escapeHTML(article.date)}</span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+                gallery.insertAdjacentHTML('beforeend', cardHtml);
+
+                // 動態設定推文數和顏色
+                const pushEl = document.getElementById(pushId);
+                if (pushEl) {
+                    pushEl.textContent = article.pushCount;
+                    const pushVal = article.pushCount;
+                    if (pushVal === '爆') {
+                        pushEl.style.color = 'var(--push-red)';
+                    } else if (pushVal.startsWith('X')) {
+                        pushEl.style.color = 'var(--push-gray)';
+                    } else if (!isNaN(pushVal) && parseInt(pushVal, 10) >= 10) {
+                        pushEl.style.color = 'var(--push-yellow)';
+                    } else if (!isNaN(pushVal) && parseInt(pushVal, 10) > 0) {
+                         pushEl.style.color = 'var(--push-green)';
+                    }
+                }
+
+                // 非同步抓取封面 (圖片或文字)
+                fetchAndSetCover(article, thumbWrapperId);
+            });
+        }
+
+        /**
+         * 抓取單篇文章內容，設定封面 (圖片 或 文字)
+         */
+        async function fetchAndSetCover(article, thumbWrapperId) {
+            const thumbWrapper = document.getElementById(thumbWrapperId);
+            if (!thumbWrapper) return;
+
+            try {
+                const articleHtml = await fetchWithProxy(`${PTT_BASE_URL}${article.url}`);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(articleHtml, 'text/html');
+
+                // 1. 嘗試尋找圖片
+                const firstImage = doc.querySelector('#main-content a[href$=".jpg"], #main-content a[href$=".png"], #main-content a[href$=".gif"], #main-content a[href$=".jpeg"]');
+
+                if (firstImage) {
+                    let imageUrl = firstImage.getAttribute('href'); 
+                    if (imageUrl.includes('imgur.com') && !imageUrl.endsWith('.jpg') && !imageUrl.endsWith('.png')) {
+                        const imgurIdMatch = imageUrl.match(/imgur\.com\/([a-zA-Z0-9]+)$/);
+                        if (imgurIdMatch && imgurIdMatch[1]) {
+                             imageUrl = `https://i.imgur.com/${imgurIdMatch[1]}.jpg`;
+                        }
+                    }
+                    
+                    const imgEl = thumbWrapper.querySelector('img');
+                    if (imgEl) {
+                        imgEl.src = imageUrl;
+                        imgEl.alt = article.title;
+                        imgEl.onerror = () => {
+                            thumbWrapper.innerHTML = `<div class="text-preview error">圖片載入失敗</div>`;
+                        };
+                    }
+                } else {
+                    // 2. 找不到圖片，改用文字
+                    const mainContent = doc.querySelector('#main-content');
+                    if (!mainContent) throw new Error("找不到 #main-content");
+                    
+                    const contentClone = mainContent.cloneNode(true);
+                    contentClone.querySelectorAll('.push, .article-metaline, .article-metaline-right, .f2, strong, span[class^="f"]').forEach(el => el.remove());
+                    
+                    let previewText = contentClone.innerText.trim();
+                    previewText = previewText.replace(/(\r\n|\n|\r)/gm, " ").replace(/\s+/g, " ");
+                    
+                    if (!previewText) {
+                        previewText = '(無內文)';
+                    }
+                    
+                    previewText = previewText.substring(0, 100) + '...';
+                    thumbWrapper.innerHTML = `<div class="text-preview">${escapeHTML(previewText)}</div>`;
+                }
+            } catch (error) {
+                console.error(`無法抓取文章 ${article.url} 的內容:`, error);
+                thumbWrapper.innerHTML = `<div class="text-preview error">載入失敗</div>`;
+            }
+        }
+
+        /** 簡單的 HTML 脫敏函式 */
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
+        }
+
+        /** 更新網格排版 */
+        function updateGalleryGrid() {
+            gallery.style.gridTemplateColumns = `repeat(auto-fill, minmax(${currentMinCardWidth}px, 1fr))`;
+            console.log(`網格最小寬度設為: ${currentMinCardWidth}px`);
+        }
+
+        /** 更新排序按鈕 UI */
+        function updateSortButtonUI() {
+            sortTimeBtn.classList.toggle('active', currentSortMode === 'time');
+            sortPushBtn.classList.toggle('active', currentSortMode === 'push');
+        }
+
+        // --- 初始載入 ---
+        updateGalleryGrid(); // 頁面載入時，立即設定一次預設的網格排版
+
+    </script>
+</body>
+</html>
