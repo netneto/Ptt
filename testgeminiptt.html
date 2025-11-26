@@ -223,20 +223,21 @@
             transform: scale(1.05);
         }
 
-        /* 文字縮圖 */
+        /* 文字縮圖 (隨卡片大小調整) */
         .text-preview {
             width: 100%;
             height: 100%;
-            padding: 0.5rem;
-            font-size: 0.7rem; /* 縮小 */
+            padding: 0.4rem;
+            font-size: var(--card-text-size, 0.75rem);
             color: var(--disp-text-medium);
-            line-height: 1.4;
+            line-height: 1.5;
             overflow: hidden;
             display: -webkit-box;
             -webkit-box-orient: vertical;
-            -webkit-line-clamp: 5; /* 配合 100px 高度 */
+            -webkit-line-clamp: var(--card-text-lines, 6);
             text-overflow: ellipsis;
             word-break: break-all;
+            box-sizing: border-box;
         }
         .text-preview.error {
             color: #f88;
@@ -1034,7 +1035,14 @@
             // 高度按比例調整 (寬高比約 4:3)
             const cardImgHeight = Math.round(currentMinCardWidth * 0.75);
             document.documentElement.style.setProperty('--card-img-height', `${cardImgHeight}px`);
-            console.log(`網格最小寬度設為: ${currentMinCardWidth}px, 圖片高度: ${cardImgHeight}px`);
+
+            // 文字大小隨卡片寬度調整
+            const textSize = Math.max(0.65, Math.min(1.1, currentMinCardWidth / 120));
+            const textLines = Math.max(3, Math.floor(cardImgHeight / 18));
+            document.documentElement.style.setProperty('--card-text-size', `${textSize}rem`);
+            document.documentElement.style.setProperty('--card-text-lines', textLines);
+
+            console.log(`網格: ${currentMinCardWidth}px, 高度: ${cardImgHeight}px, 文字: ${textSize.toFixed(2)}rem, 行數: ${textLines}`);
         }
 
         /** 更新排序按鈕 UI */
@@ -1047,6 +1055,9 @@
 
         /** 開始懸停計時器 */
         function startHoverTimer(cardEl, article) {
+            // 鍵盤模式下不啟用滑鼠懸停預覽
+            if (keyboardModeEnabled) return;
+
             clearHoverTimer();
             currentHoverCard = cardEl;
 
