@@ -291,6 +291,162 @@
             font-size: 0.9rem;
         }
 
+        /* --- 懸停預覽彈窗 --- */
+        .preview-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .preview-overlay.active {
+            display: block;
+        }
+        .preview-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: var(--disp-bg-medium);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1rem;
+            background-color: var(--disp-bg-light);
+            border-bottom: 1px solid var(--disp-border-color);
+        }
+        .preview-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--disp-text-light);
+            margin: 0 0 0.5rem 0;
+            line-height: 1.3;
+        }
+        .preview-meta {
+            font-size: 0.85rem;
+            color: var(--disp-text-dark);
+        }
+        .preview-close {
+            background: none;
+            border: none;
+            color: var(--disp-text-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 0.5rem;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .preview-close:hover {
+            opacity: 1;
+        }
+        .preview-content {
+            padding: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--disp-text-medium);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .preview-images {
+            padding: 0.5rem 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .preview-images img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .preview-images img:hover {
+            transform: scale(1.02);
+        }
+        .preview-images img.fullsize {
+            max-width: none;
+            max-height: none;
+        }
+        .preview-pushes {
+            padding: 1rem;
+            border-top: 1px solid var(--disp-border-color);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .preview-pushes-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--disp-text-light);
+            margin-bottom: 0.5rem;
+        }
+        .preview-push-item {
+            font-size: 0.8rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--disp-bg-dark);
+            display: flex;
+            gap: 0.5rem;
+        }
+        .preview-push-item:last-child {
+            border-bottom: none;
+        }
+        .push-tag {
+            font-weight: bold;
+            min-width: 1.5em;
+        }
+        .push-tag.push { color: var(--push-yellow); }
+        .push-tag.boo { color: var(--push-red); }
+        .push-tag.arrow { color: var(--push-gray); }
+        .push-userid {
+            color: var(--disp-accent-blue);
+            min-width: 80px;
+        }
+        .push-content {
+            color: var(--disp-text-medium);
+            flex: 1;
+        }
+        .push-time {
+            color: var(--disp-text-dark);
+            font-size: 0.75rem;
+        }
+        .preview-loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--disp-text-medium);
+        }
+        .preview-loading .loader {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--disp-bg-light);
+            border-top: 3px solid var(--disp-accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        /* 懸停進度指示器 */
+        .hover-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: var(--disp-accent-blue);
+            width: 0%;
+            transition: width 0.1s linear;
+            z-index: 10;
+        }
+        .card-link {
+            position: relative; /* 為了定位進度條 */
+        }
+
         /* --- 手機版響應式調整 --- */
         @media (max-width: 480px) {
             .container { padding: 0.25rem; }
@@ -399,6 +555,25 @@
         </div>
     </div>
 
+    <!-- 懸停預覽彈窗 -->
+    <div id="preview-overlay" class="preview-overlay">
+        <div class="preview-container">
+            <div class="preview-header">
+                <div>
+                    <h2 class="preview-title" id="preview-title">標題</h2>
+                    <div class="preview-meta" id="preview-meta">作者 / 日期</div>
+                </div>
+                <button class="preview-close" id="preview-close">&times;</button>
+            </div>
+            <div id="preview-body">
+                <div class="preview-loading">
+                    <div class="loader"></div>
+                    <span>載入文章中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // CORS Proxy
         const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
@@ -411,13 +586,13 @@
         const loading = document.getElementById('loading');
         const errorMessage = document.getElementById('error-message');
 
-        // 縮放控制
+        // 縮放控制 (擴大調整範圍)
         const gridSmallerBtn = document.getElementById('grid-smaller-btn');
         const gridLargerBtn = document.getElementById('grid-larger-btn');
-        let currentMinCardWidth = 120; // 預設更小
-        const MIN_CARD_WIDTH = 100; 
-        const MAX_CARD_WIDTH = 240; 
-        const WIDTH_STEP = 20; 
+        let currentMinCardWidth = 120; // 預設
+        const MIN_CARD_WIDTH = 60;   // 最小 60px (更密集)
+        const MAX_CARD_WIDTH = 400;  // 最大 400px (更大卡片)
+        const WIDTH_STEP = 15;       // 更細緻的調整 
 
         // --- 新增：排序控制 ---
         const sortTimeBtn = document.getElementById('sort-time-btn');
@@ -425,6 +600,19 @@
         let currentSortMode = 'time'; // 'time' or 'push'
         let allFetchedArticles = []; // 儲存所有抓取的文章
         // --- 結束：排序控制 ---
+
+        // --- 新增：懸停預覽控制 ---
+        const previewOverlay = document.getElementById('preview-overlay');
+        const previewTitle = document.getElementById('preview-title');
+        const previewMeta = document.getElementById('preview-meta');
+        const previewBody = document.getElementById('preview-body');
+        const previewClose = document.getElementById('preview-close');
+
+        let hoverTimer = null;
+        let hoverProgressInterval = null;
+        let currentHoverCard = null;
+        const HOVER_DELAY = 3000; // 3 秒
+        // --- 結束：懸停預覽控制 ---
 
         // --- 事件監聽 ---
         boardSelect.addEventListener('change', handleBoardSelect);
@@ -448,7 +636,16 @@
             updateSortButtonUI();
             displayArticles(); // 重新排序並渲染
         });
-        // --- 結束：事件監聽 ---
+
+        // 預覽彈窗關閉事件
+        previewClose.addEventListener('click', closePreview);
+        previewOverlay.addEventListener('click', (e) => {
+            if (e.target === previewOverlay) closePreview();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePreview();
+        });
+        // --- 結束：事件監聯 ---
 
         /**
          * 處理版面選擇事件
@@ -662,6 +859,20 @@
 
                 // 非同步抓取封面 (圖片或文字)
                 fetchAndSetCover(article, thumbWrapperId);
+
+                // --- 新增：懸停預覽事件監聽 ---
+                const cardEl = gallery.lastElementChild;
+                cardEl.addEventListener('mouseenter', () => {
+                    startHoverTimer(cardEl, article);
+                });
+                cardEl.addEventListener('mouseleave', () => {
+                    clearHoverTimer();
+                });
+                // 點擊時也清除計時器 (避免開新分頁後還觸發預覽)
+                cardEl.addEventListener('click', () => {
+                    clearHoverTimer();
+                });
+                // --- 結束：懸停預覽事件監聽 ---
             });
         }
 
@@ -737,6 +948,195 @@
             sortTimeBtn.classList.toggle('active', currentSortMode === 'time');
             sortPushBtn.classList.toggle('active', currentSortMode === 'push');
         }
+
+        // --- 懸停預覽功能 ---
+
+        /** 開始懸停計時器 */
+        function startHoverTimer(cardEl, article) {
+            clearHoverTimer();
+            currentHoverCard = cardEl;
+
+            // 加入進度條
+            let progressBar = cardEl.querySelector('.hover-progress');
+            if (!progressBar) {
+                progressBar = document.createElement('div');
+                progressBar.className = 'hover-progress';
+                cardEl.appendChild(progressBar);
+            }
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const stepTime = 50; // 每 50ms 更新一次
+            const steps = HOVER_DELAY / stepTime;
+            const stepPercent = 100 / steps;
+
+            hoverProgressInterval = setInterval(() => {
+                progress += stepPercent;
+                progressBar.style.width = `${Math.min(progress, 100)}%`;
+            }, stepTime);
+
+            hoverTimer = setTimeout(() => {
+                clearHoverTimer();
+                showPreview(article);
+            }, HOVER_DELAY);
+        }
+
+        /** 清除懸停計時器 */
+        function clearHoverTimer() {
+            if (hoverTimer) {
+                clearTimeout(hoverTimer);
+                hoverTimer = null;
+            }
+            if (hoverProgressInterval) {
+                clearInterval(hoverProgressInterval);
+                hoverProgressInterval = null;
+            }
+            if (currentHoverCard) {
+                const progressBar = currentHoverCard.querySelector('.hover-progress');
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                }
+                currentHoverCard = null;
+            }
+        }
+
+        /** 顯示預覽彈窗 */
+        function showPreview(article) {
+            previewTitle.textContent = article.title;
+            previewMeta.textContent = `${article.author} / ${article.date} / 推: ${article.pushCount}`;
+            previewBody.innerHTML = `
+                <div class="preview-loading">
+                    <div class="loader"></div>
+                    <span>載入文章中...</span>
+                </div>
+            `;
+            previewOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // 防止背景滾動
+
+            // 載入完整文章內容
+            loadFullArticlePreview(article);
+        }
+
+        /** 關閉預覽彈窗 */
+        function closePreview() {
+            previewOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            previewBody.innerHTML = '';
+        }
+
+        /** 載入完整文章預覽內容 */
+        async function loadFullArticlePreview(article) {
+            try {
+                const articleHtml = await fetchWithProxy(`${PTT_BASE_URL}${article.url}`);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(articleHtml, 'text/html');
+
+                const mainContent = doc.querySelector('#main-content');
+                if (!mainContent) {
+                    previewBody.innerHTML = '<div class="preview-content" style="color: #f88;">無法載入文章內容</div>';
+                    return;
+                }
+
+                // 1. 抓取所有圖片連結
+                const imageLinks = mainContent.querySelectorAll('a[href$=".jpg"], a[href$=".png"], a[href$=".gif"], a[href$=".jpeg"]');
+                const images = [];
+                const seenUrls = new Set();
+
+                imageLinks.forEach(link => {
+                    let imageUrl = link.getAttribute('href');
+                    // 處理 imgur 短網址
+                    if (imageUrl.includes('imgur.com') && !imageUrl.match(/\.(jpg|png|gif|jpeg)$/i)) {
+                        const imgurIdMatch = imageUrl.match(/imgur\.com\/([a-zA-Z0-9]+)$/);
+                        if (imgurIdMatch && imgurIdMatch[1]) {
+                            imageUrl = `https://i.imgur.com/${imgurIdMatch[1]}.jpg`;
+                        }
+                    }
+                    if (!seenUrls.has(imageUrl)) {
+                        seenUrls.add(imageUrl);
+                        images.push(imageUrl);
+                    }
+                });
+
+                // 2. 抓取推文
+                const pushElements = mainContent.querySelectorAll('.push');
+                const pushes = [];
+                pushElements.forEach(pushEl => {
+                    const tagEl = pushEl.querySelector('.push-tag');
+                    const userEl = pushEl.querySelector('.push-userid');
+                    const contentEl = pushEl.querySelector('.push-content');
+                    const timeEl = pushEl.querySelector('.push-ipdatetime');
+
+                    if (tagEl && userEl && contentEl) {
+                        const tag = tagEl.textContent.trim();
+                        let tagClass = 'arrow';
+                        if (tag === '推') tagClass = 'push';
+                        else if (tag === '噓') tagClass = 'boo';
+
+                        pushes.push({
+                            tag: tag,
+                            tagClass: tagClass,
+                            user: userEl.textContent.trim(),
+                            content: contentEl.textContent.replace(/^: /, '').trim(),
+                            time: timeEl ? timeEl.textContent.trim() : ''
+                        });
+                    }
+                });
+
+                // 3. 抓取文章內文 (移除推文和 meta)
+                const contentClone = mainContent.cloneNode(true);
+                contentClone.querySelectorAll('.push, .article-metaline, .article-metaline-right, .f2, span[class^="f"]').forEach(el => el.remove());
+                // 移除圖片連結文字 (已單獨顯示)
+                contentClone.querySelectorAll('a').forEach(el => {
+                    const href = el.getAttribute('href') || '';
+                    if (href.match(/\.(jpg|png|gif|jpeg)$/i) || href.includes('imgur.com')) {
+                        el.remove();
+                    }
+                });
+                let textContent = contentClone.innerText.trim();
+
+                // 4. 組合 HTML
+                let previewHtml = '';
+
+                // 文章內文
+                if (textContent) {
+                    previewHtml += `<div class="preview-content">${escapeHTML(textContent)}</div>`;
+                }
+
+                // 圖片區
+                if (images.length > 0) {
+                    previewHtml += '<div class="preview-images">';
+                    images.forEach(imgUrl => {
+                        previewHtml += `<img src="${escapeHTML(imgUrl)}" alt="圖片" loading="lazy" onclick="this.classList.toggle('fullsize')" onerror="this.style.display='none'">`;
+                    });
+                    previewHtml += '</div>';
+                }
+
+                // 推文區
+                if (pushes.length > 0) {
+                    previewHtml += `<div class="preview-pushes">`;
+                    previewHtml += `<div class="preview-pushes-title">推文 (${pushes.length})</div>`;
+                    pushes.forEach(p => {
+                        previewHtml += `
+                            <div class="preview-push-item">
+                                <span class="push-tag ${p.tagClass}">${escapeHTML(p.tag)}</span>
+                                <span class="push-userid">${escapeHTML(p.user)}</span>
+                                <span class="push-content">${escapeHTML(p.content)}</span>
+                                <span class="push-time">${escapeHTML(p.time)}</span>
+                            </div>
+                        `;
+                    });
+                    previewHtml += '</div>';
+                }
+
+                previewBody.innerHTML = previewHtml || '<div class="preview-content">(無內容)</div>';
+
+            } catch (error) {
+                console.error('載入文章預覽失敗:', error);
+                previewBody.innerHTML = `<div class="preview-content" style="color: #f88;">載入失敗: ${escapeHTML(error.message)}</div>`;
+            }
+        }
+
+        // --- 結束：懸停預覽功能 ---
 
         // --- 初始載入 ---
         updateGalleryGrid(); // 頁面載入時，立即設定一次預設的網格排版
