@@ -48,6 +48,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 0.5rem;
         }
 
         h1 {
@@ -56,7 +57,13 @@
             color: var(--disp-text-light);
             margin: 0;
             flex-shrink: 0;
-            padding-right: 0.5rem;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-shrink: 0;
         }
 
         .select-wrapper {
@@ -195,15 +202,16 @@
             background-color: var(--disp-hover-bg);
         }
 
-        /* 縮圖區 */
+        /* 縮圖區 (高度隨卡片寬度調整) */
         .card-img-wrapper {
             width: 100%;
-            height: 100px; /* 縮小 */
+            height: var(--card-img-height, 100px);
             background-color: var(--disp-bg-light);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            transition: height 0.2s ease;
         }
         .card-img-wrapper img {
             width: 100%;
@@ -215,20 +223,21 @@
             transform: scale(1.05);
         }
 
-        /* 文字縮圖 */
+        /* 文字縮圖 (隨卡片大小調整) */
         .text-preview {
             width: 100%;
             height: 100%;
-            padding: 0.5rem;
-            font-size: 0.7rem; /* 縮小 */
+            padding: 0.4rem;
+            font-size: var(--card-text-size, 0.75rem);
             color: var(--disp-text-medium);
-            line-height: 1.4;
+            line-height: 1.5;
             overflow: hidden;
             display: -webkit-box;
             -webkit-box-orient: vertical;
-            -webkit-line-clamp: 5; /* 配合 100px 高度 */
+            -webkit-line-clamp: var(--card-text-lines, 6);
             text-overflow: ellipsis;
             word-break: break-all;
+            box-sizing: border-box;
         }
         .text-preview.error {
             color: #f88;
@@ -447,6 +456,69 @@
             position: relative; /* 為了定位進度條 */
         }
 
+        /* --- 鍵盤模式 --- */
+        .keyboard-toggle {
+            background: none;
+            border: 1px solid var(--disp-border-color);
+            border-radius: 4px;
+            color: var(--disp-text-dark);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            margin-left: 0.5rem;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .keyboard-toggle:hover {
+            background-color: var(--disp-bg-light);
+            color: var(--disp-text-light);
+        }
+        .keyboard-toggle.active {
+            background-color: var(--disp-accent-blue);
+            border-color: var(--disp-accent-blue);
+            color: white;
+        }
+        .keyboard-toggle .kbd-icon {
+            font-size: 0.9rem;
+        }
+
+        /* 鍵盤選中的卡片 */
+        .card-link.keyboard-selected {
+            outline: 3px solid var(--disp-accent-blue);
+            outline-offset: 2px;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+        }
+
+        /* 鍵盤模式提示 */
+        .keyboard-hint {
+            display: none;
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.85);
+            color: var(--disp-text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .keyboard-hint.active {
+            display: block;
+        }
+        .keyboard-hint kbd {
+            background-color: var(--disp-bg-light);
+            border: 1px solid var(--disp-border-color);
+            border-radius: 3px;
+            padding: 0.1rem 0.4rem;
+            margin: 0 0.2rem;
+            font-family: monospace;
+        }
+
         /* --- 手機版響應式調整 --- */
         @media (max-width: 480px) {
             .container { padding: 0.25rem; }
@@ -524,6 +596,14 @@
                     </optgroup>
                 </select>
             </div>
+            <!-- 控制按鈕群組 -->
+            <div class="header-controls">
+                <button id="keyboard-toggle" class="keyboard-toggle" title="鍵盤模式 (按 K 切換)">
+                    <span class="kbd-icon">⌨</span>
+                </button>
+                <button id="grid-larger-btn" class="zoom-btn control-btn" title="放大 (欄數減少)">-</button>
+                <button id="grid-smaller-btn" class="zoom-btn control-btn" title="縮小 (欄數增加)">+</button>
+            </div>
         </header>
 
         <!-- 控制列 -->
@@ -534,15 +614,11 @@
                 <span>載入中...</span>
             </div>
             
-            <!-- 排序 & 縮放 (右) -->
+            <!-- 排序 (右) -->
             <div class="controls-group">
                 <span class="controls-label">排序:</span>
                 <button id="sort-time-btn" class="sort-btn control-btn active">最新</button>
                 <button id="sort-push-btn" class="sort-btn control-btn">熱門</button>
-                
-                <span class="controls-label">排列:</span>
-                <button id="grid-larger-btn" class="zoom-btn control-btn" title="放大 (欄數減少)">-</button>
-                <button id="grid-smaller-btn" class="zoom-btn control-btn" title="縮小 (欄數增加)">+</button>
             </div>
         </div>
        
@@ -572,6 +648,11 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- 鍵盤模式提示 -->
+    <div id="keyboard-hint" class="keyboard-hint">
+        <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 移動 | <kbd>Enter</kbd> 開啟 | <kbd>Space</kbd> 預覽 | <kbd>K</kbd> 關閉
     </div>
 
     <script>
@@ -614,6 +695,13 @@
         const HOVER_DELAY = 3000; // 3 秒
         // --- 結束：懸停預覽控制 ---
 
+        // --- 新增：鍵盤模式控制 ---
+        const keyboardToggle = document.getElementById('keyboard-toggle');
+        const keyboardHint = document.getElementById('keyboard-hint');
+        let keyboardModeEnabled = false;
+        let selectedCardIndex = -1;
+        // --- 結束：鍵盤模式控制 ---
+
         // --- 事件監聽 ---
         boardSelect.addEventListener('change', handleBoardSelect);
         gridSmallerBtn.addEventListener('click', () => {
@@ -645,6 +733,10 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closePreview();
         });
+
+        // 鍵盤模式切換
+        keyboardToggle.addEventListener('click', toggleKeyboardMode);
+        document.addEventListener('keydown', handleKeyboardNavigation);
         // --- 結束：事件監聯 ---
 
         /**
@@ -940,7 +1032,17 @@
         /** 更新網格排版 */
         function updateGalleryGrid() {
             gallery.style.gridTemplateColumns = `repeat(auto-fill, minmax(${currentMinCardWidth}px, 1fr))`;
-            console.log(`網格最小寬度設為: ${currentMinCardWidth}px`);
+            // 高度按比例調整 (寬高比約 4:3)
+            const cardImgHeight = Math.round(currentMinCardWidth * 0.75);
+            document.documentElement.style.setProperty('--card-img-height', `${cardImgHeight}px`);
+
+            // 文字大小隨卡片寬度調整
+            const textSize = Math.max(0.65, Math.min(1.1, currentMinCardWidth / 120));
+            const textLines = Math.max(3, Math.floor(cardImgHeight / 18));
+            document.documentElement.style.setProperty('--card-text-size', `${textSize}rem`);
+            document.documentElement.style.setProperty('--card-text-lines', textLines);
+
+            console.log(`網格: ${currentMinCardWidth}px, 高度: ${cardImgHeight}px, 文字: ${textSize.toFixed(2)}rem, 行數: ${textLines}`);
         }
 
         /** 更新排序按鈕 UI */
@@ -953,6 +1055,9 @@
 
         /** 開始懸停計時器 */
         function startHoverTimer(cardEl, article) {
+            // 鍵盤模式下不啟用滑鼠懸停預覽
+            if (keyboardModeEnabled) return;
+
             clearHoverTimer();
             currentHoverCard = cardEl;
 
@@ -1137,6 +1242,180 @@
         }
 
         // --- 結束：懸停預覽功能 ---
+
+        // --- 鍵盤模式功能 ---
+
+        /** 切換鍵盤模式 */
+        function toggleKeyboardMode() {
+            keyboardModeEnabled = !keyboardModeEnabled;
+            keyboardToggle.classList.toggle('active', keyboardModeEnabled);
+            keyboardHint.classList.toggle('active', keyboardModeEnabled);
+
+            if (keyboardModeEnabled) {
+                // 啟用時選擇第一張卡片
+                const cards = getCardElements();
+                if (cards.length > 0) {
+                    selectedCardIndex = 0;
+                    updateSelectedCard();
+                }
+            } else {
+                // 關閉時清除選擇
+                clearSelectedCard();
+                selectedCardIndex = -1;
+            }
+        }
+
+        /** 取得所有卡片元素 */
+        function getCardElements() {
+            return Array.from(gallery.querySelectorAll('.card-link'));
+        }
+
+        /** 取得目前網格的欄數 */
+        function getGridColumns() {
+            const cards = getCardElements();
+            if (cards.length < 2) return 1;
+
+            const firstCardTop = cards[0].getBoundingClientRect().top;
+            let columns = 1;
+            for (let i = 1; i < cards.length; i++) {
+                if (cards[i].getBoundingClientRect().top === firstCardTop) {
+                    columns++;
+                } else {
+                    break;
+                }
+            }
+            return columns;
+        }
+
+        /** 更新選中的卡片視覺效果 */
+        function updateSelectedCard() {
+            const cards = getCardElements();
+            cards.forEach((card, i) => {
+                card.classList.toggle('keyboard-selected', i === selectedCardIndex);
+            });
+
+            // 滾動到選中的卡片
+            if (selectedCardIndex >= 0 && selectedCardIndex < cards.length) {
+                cards[selectedCardIndex].scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+        }
+
+        /** 清除選中的卡片 */
+        function clearSelectedCard() {
+            const cards = getCardElements();
+            cards.forEach(card => {
+                card.classList.remove('keyboard-selected');
+            });
+        }
+
+        /** 處理鍵盤導航 */
+        function handleKeyboardNavigation(e) {
+            // 如果正在輸入 (select 有 focus)，忽略
+            if (document.activeElement === boardSelect) return;
+
+            // 如果預覽視窗開啟，用方向鍵控制滾動
+            if (previewOverlay.classList.contains('active')) {
+                const scrollAmount = 100; // 每次滾動像素
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+                        return;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: -scrollAmount, behavior: 'smooth' });
+                        return;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: scrollAmount * 3, behavior: 'smooth' });
+                        return;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        previewOverlay.scrollBy({ top: -scrollAmount * 3, behavior: 'smooth' });
+                        return;
+                    case ' ': // 空白鍵關閉預覽
+                    case 'Escape':
+                        e.preventDefault();
+                        closePreview();
+                        return;
+                }
+                return; // 預覽開啟時，其他按鍵不處理
+            }
+
+            // K 鍵切換鍵盤模式
+            if (e.key === 'k' || e.key === 'K') {
+                e.preventDefault();
+                toggleKeyboardMode();
+                return;
+            }
+
+            // 如果鍵盤模式未啟用，忽略其他按鍵
+            if (!keyboardModeEnabled) return;
+
+            const cards = getCardElements();
+            if (cards.length === 0) return;
+
+            const columns = getGridColumns();
+            let newIndex = selectedCardIndex;
+
+            switch (e.key) {
+                case 'ArrowRight':
+                    e.preventDefault();
+                    newIndex = Math.min(selectedCardIndex + 1, cards.length - 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    newIndex = Math.max(selectedCardIndex - 1, 0);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    newIndex = Math.min(selectedCardIndex + columns, cards.length - 1);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    newIndex = Math.max(selectedCardIndex - columns, 0);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (selectedCardIndex >= 0 && selectedCardIndex < cards.length) {
+                        // 開啟文章連結
+                        window.open(cards[selectedCardIndex].href, '_blank');
+                    }
+                    return;
+                case ' ': // 空白鍵
+                    e.preventDefault();
+                    if (selectedCardIndex >= 0 && selectedCardIndex < cards.length) {
+                        // 顯示預覽
+                        const article = allFetchedArticles.find(a =>
+                            cards[selectedCardIndex].href.includes(a.url)
+                        );
+                        if (article) {
+                            showPreview(article);
+                        }
+                    }
+                    return;
+                case 'Home':
+                    e.preventDefault();
+                    newIndex = 0;
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    newIndex = cards.length - 1;
+                    break;
+                default:
+                    return;
+            }
+
+            if (newIndex !== selectedCardIndex) {
+                selectedCardIndex = newIndex;
+                updateSelectedCard();
+            }
+        }
+
+        // --- 結束：鍵盤模式功能 ---
 
         // --- 初始載入 ---
         updateGalleryGrid(); // 頁面載入時，立即設定一次預設的網格排版
